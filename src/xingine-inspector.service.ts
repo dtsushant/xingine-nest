@@ -12,6 +12,7 @@ import {
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { getCommissarProperties } from './xingine-nest.decorator';
 import { extractMeta } from './utils/commissar.utils';
+import {DECORATORS} from "@nestjs/swagger/dist/constants";
 
 @Injectable()
 export class XingineInspectorService {
@@ -55,15 +56,20 @@ export class XingineInspectorService {
           PATH_METADATA,
           prototype[methodName],
         );
+
+        const apiBodyMetadata = Reflect.getMetadata('swagger/apiBody', prototype[methodName]);
+        const description =  apiBodyMetadata?.description ?? apiBodyMetadata?.schema?.description;
+
         const fullPath = (path: string) =>
           `${RequestMethod[method]}::/${controllerPath}/${path.replace(/^\//, '')}`;
 
+        console.log("the description ",routePath, description);
         if (typeof routePath === 'string') {
-          definedPaths.push({ name: fullPath(routePath), description: '' });
+          definedPaths.push({ name: fullPath(routePath), description: description ?? fullPath(routePath) });
         }
         if (Array.isArray(routePath)) {
           for (const path of routePath) {
-            definedPaths.push({ name: fullPath(path), description: '' });
+            definedPaths.push({ name: fullPath(path), description: description ?? fullPath(path) });
           }
         }
       }
@@ -148,6 +154,7 @@ export class XingineInspectorService {
         const uiComponent = {
           component: commissar.component,
           layout: commissar.layout,
+          expositionRule: commissar.expositionRule,
           path: uiPath,
           meta: componentMeta,
         };
