@@ -1,6 +1,6 @@
 {
   "name": "xingine-nest",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "A xingine for nest",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,8 +8,11 @@
     "dist"
   ],
   "scripts": {
+    "clean": "rimraf dist",
     "build": "tsc --project tsconfig.json && tsc-alias",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "push": "yalc push --changed",
+    "yalc:dev": "npm run clean && npm run build && npm run push"
   },
   "keywords": [
     "typescript",
@@ -34,7 +37,7 @@
     "class-validator": "^0.14.1",
     "decoders": "^2.7.0",
     "reflect-metadata": "^0.2.2",
-    "xingine": "^1.0.4"
+    "xingine": "^1.0.7"
   },
   "devDependencies": {
     "@nestjs/core": "^11.0.1",
@@ -44,10 +47,10 @@
     "decoders": "^2.7.0",
     "jest": "^29.7.0",
     "reflect-metadata": "^0.2.2",
+    "rimraf": "^6.0.1",
     "ts-jest": "^29.3.0",
     "tsc-alias": "^1.8.2",
-    "typescript": "^5.0.0",
-    "xingine": "^1.0.4"
+    "typescript": "^5.0.0"
   },
   "jest": {
     "moduleFileExtensions": [
