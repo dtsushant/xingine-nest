@@ -61,7 +61,8 @@ export class XingineInspectorService {
 
       // Use layoutMandate from new format or fall back to old format
       const layoutType = layoutProperties?.type || 
-                        provisioneerProperties?.layoutMandate || 
+                        provisioneerProperties?.layoutMandate?.type || 
+                        provisioneerProperties?.layout || 
                         'default';
 
       if (!layoutGroups.has(layoutType)) {
@@ -96,7 +97,8 @@ export class XingineInspectorService {
         },
         footer: this.buildFooterComponent(layoutType, controllers),
         style: {
-          className: `layout-${layoutType}`
+          className: `layout-${layoutType}`,
+          theme: layoutType === 'login' ? 'minimal' : 'default'
         }
       };
 
@@ -105,8 +107,6 @@ export class XingineInspectorService {
 
     return layoutRenderers;
   }
-
-  getAllModuleProperties(): ModuleProperties[] {
     const modules = this.discoveryService.getProviders();
 
     return this.fetchMappedModules();
@@ -219,20 +219,25 @@ export class XingineInspectorService {
           }, '');
         }
 
-        // Only process old format commissars for backward compatibility
-        if ('operative' in commissar && 'directive' in commissar) {
-          const legacyCommissar = commissar as any;
-          const componentMeta = extractMeta(legacyCommissar, fullPath ?? '');
+        /*const hasPermission = this.reflector.get(
+            PERMISSION_GUARD_KEY,
+            prototype[methodName],
+        );
 
-          const uiComponent = {
-            component: typeof legacyCommissar.component === 'string' ? legacyCommissar.component : 'Unknown',
-            layout: legacyCommissar.layout || 'default',
-            path: uiPath,
-            meta: componentMeta,
-          };
+        if (hasPermission) {
+          console.log(` ${controller.name}.${methodName} is annotated with @PermissionGateKeeper(${hasPermission})`);
+        }*/
 
-          mod.uiComponent?.push(uiComponent);
-        }
+        const componentMeta = extractMeta(commissar, fullPath ?? '');
+
+        const uiComponent = {
+          component: commissar.component,
+          layout: commissar.layout,
+          path: uiPath,
+          meta: componentMeta,
+        };
+
+        mod.uiComponent?.push(uiComponent);
       }
     }
     return moduleProperties;
@@ -257,7 +262,7 @@ export class XingineInspectorService {
         if (!commissar) continue;
 
         // Check for layout override
-        const pathConfig = 'path' in commissar ? commissar.path : (commissar as any).layout;
+        const pathConfig = 'path' in commissar ? commissar.path : commissar.layout;
         if (typeof pathConfig === 'object' && 'overrideLayout' in pathConfig && pathConfig.overrideLayout) {
           // Skip routes that override to different layouts for this layout group
           continue;
@@ -285,12 +290,11 @@ export class XingineInspectorService {
         let component: LayoutComponentDetail | undefined;
         if ('component' in commissar && commissar.component) {
           // New format - component is directly provided
-          if (typeof commissar.component === 'object') {
-            component = commissar.component;
-          }
+          component = commissar.component;
         } else {
-          // Old format - skip for now as it needs different processing
-          continue;
+          // Old format - extract from method or commissar properties
+          const legacyCommissar = commissar as any;
+          component = legacyCommissar.component;
         }
 
         if (!component) {
@@ -307,11 +311,22 @@ export class XingineInspectorService {
           }
         }
 
-        // Build final commissar route - Commissar extends LayoutComponentDetail
+        // Build final commissar route
         const route: Commissar = {
-          ...component, // Spread the component properties since Commissar extends LayoutComponentDetail
           path: finalPath,
-          permission: (commissar as any).permissions || []
+          component: component,
+          meta: {
+            controllerName: controller.name,
+            methodName: methodName,
+            preAction: 'preAction' in commissar ? commissar.preAction : undefined,
+            postAction: 'postAction' in commissar ? commissar.postAction : undefined,
+            permissions: commissar.permissions || [],
+            hasPreAction: 'preAction' in commissar && !!commissar.preAction,
+            hasPostAction: 'postAction' in commissar && !!commissar.postAction
+          },
+          isMenuItem: this.getIsMenuItem(pathConfig),
+          icon: this.getIcon(pathConfig),
+          label: this.getLabel(pathConfig, methodName)
         };
 
         commissarRoutes.push(route);
@@ -421,4 +436,6 @@ export class XingineInspectorService {
       .replace(/^./, str => str.toUpperCase())
       .trim();
   }
+
+  getAllModuleProperties(): ModuleProperties[] {
 }
