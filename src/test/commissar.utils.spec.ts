@@ -27,10 +27,10 @@ describe('extractMeta test', () => {
     const meta = extractMeta(options, '');
     console.log('the meta here is ', meta);
     // Assert shape without type casting
-    expect(meta.component).toBe('FormRenderer');
-    expect(meta.properties).toHaveProperty('action');
-    expect(meta.properties).toHaveProperty('fields');
-    const fields = (meta.properties as FormMeta).fields;
+    expect(meta?.component).toBe('FormRenderer');
+    expect(meta?.properties).toHaveProperty('action');
+    expect(meta?.properties).toHaveProperty('fields');
+    const fields = (meta?.properties as FormMeta).fields;
     expect(Array.isArray(fields)).toBe(true);
     expect(fields.length).toBe(2);
 

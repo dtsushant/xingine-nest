@@ -7,6 +7,12 @@ import {
   GroupedPermission,
   ModuleProperties,
   Permission,
+  LayoutRenderer,
+  LayoutComponentDetail,
+  PathProperties,
+  Commissar,
+  ProvisioneerProperties,
+  LayoutRendererBuilder,
 } from 'xingine';
 
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';

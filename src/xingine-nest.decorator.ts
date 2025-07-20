@@ -1,9 +1,8 @@
 import { extractMeta } from './utils/commissar.utils';
-import { ComponentMetaMap } from 'xingine/dist/core/component/component-meta-map';
 import {
   Constructor,
   PROVISIONEER_METADATA,
-  CommissarProperties,
+  CommissarProperties, ComponentMetaMap,
 } from 'xingine';
 
 export const COMMISSAR_METADATA = 'xingine:provisioneer:commissar';
@@ -38,7 +37,7 @@ export function Commissar<
     const meta: CommissarProperties['meta'] = extractMeta(
       options,
       '',
-    ).properties;
+    )?.properties;
     const fullOptions = { ...options, meta };
 
     Reflect.defineMetadata(COMMISSAR_METADATA, fullOptions, descriptor.value);

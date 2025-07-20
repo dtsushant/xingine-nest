@@ -238,7 +238,7 @@ describe('extractMeta test', () => {
       operative: 'FormRenderer',
     };
     const meta = extractMeta(options, '');
-    const decodedMeta = formMetaDecoder.decode(meta.properties);
+    const decodedMeta = formMetaDecoder.decode(meta?.properties);
     expect(decodedMeta.ok).toBe(true);
     expect(decodedMeta.error).toBe(undefined);
     console.log('the decodedMeta', decodedMeta);
@@ -253,7 +253,7 @@ describe('extractMeta test', () => {
     const meta = extractMeta(options, '');
     console.log(JSON.stringify(meta, null, 2));
 
-    const decodedMeta = detailMetaDecoder.verify(meta.properties);
+    const decodedMeta = detailMetaDecoder.verify(meta?.properties);
     console.log(decodedMeta);
     /*console.log(decodedMeta.value);
         expect(decodedMeta.ok).toBe(true);

@@ -268,7 +268,7 @@ export function extractTableMetaFromDirective(
 }
 
 const metaExtractorMap: {
-  [K in keyof ComponentMetaMap]: (
+  [K in keyof Partial<ComponentMetaMap>]: (
     options: CommissarProperties & { commissarPath?: string },
   ) => ComponentMetaMap[K];
 } = {
@@ -310,9 +310,9 @@ const metaExtractorMap: {
 export function extractMeta(
   options: CommissarProperties,
   commissarPath?: string,
-): ComponentMeta {
+): ComponentMeta | undefined {
   const extractor = metaExtractorMap[options.operative];
-  return {
+  return extractor && {
     component: options.operative,
     properties: extractor({ ...options, commissarPath }),
   };
