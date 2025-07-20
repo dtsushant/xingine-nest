@@ -31,7 +31,7 @@ import {
   TableDispatchProperties,
   TableMeta,
   TabMeta,
-} from 'xingine/dist/core/component/component-meta-map';
+} from 'xingine';
 
 function guessInputTypeFromType(type: unknown): keyof FieldInputTypeProperties {
   if (type === String) return 'input';
