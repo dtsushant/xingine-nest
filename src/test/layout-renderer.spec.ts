@@ -352,11 +352,33 @@ describe('LayoutRenderer System', () => {
         })
       } as any;
 
+      // Create mock layout registry service
+      const mockLayoutRegistryService = {
+        hasLayout: jest.fn().mockImplementation((name: string) => {
+          return name === 'default' || name === 'comprehensive-user-dashboard';
+        }),
+        getLayoutWithFallback: jest.fn().mockImplementation((name: string) => {
+          if (name === 'comprehensive-user-dashboard') {
+            return LayoutRendererBuilder.create()
+              .type('comprehensive-user-dashboard')
+              .withContent([], { className: 'layout-content' })
+              .className('layout-comprehensive-user-dashboard')
+              .build();
+          }
+          return LayoutRendererBuilder.create()
+            .type('default')
+            .withContent([], { className: 'layout-content' })
+            .className('layout-default')
+            .build();
+        })
+      } as any;
+
       // Create inspector service with mocked dependencies
       const testInspectorService = new XingineInspectorService(
         mockDiscoveryService,
         mockMetadataScanner,
-        mockReflector
+        mockReflector,
+        mockLayoutRegistryService
       );
 
       // Extract layout renderers from the controller

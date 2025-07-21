@@ -29,6 +29,7 @@ import {
   ActionValidationResult 
 } from './interfaces/layout-interfaces';
 import { createDefaultLayout, createLoginLayout } from './templates/layout-templates';
+import { LayoutRegistryService } from './services/layout-registry.service';
 
 @Injectable()
 export class XingineInspectorService {
@@ -36,11 +37,12 @@ export class XingineInspectorService {
     private readonly discoveryService: DiscoveryService,
     private readonly metadataScanner: MetadataScanner,
     private readonly reflector: Reflector,
+    private readonly layoutRegistryService: LayoutRegistryService,
   ) {}
 
   /**
    * Get all layout renderers by scanning controllers with @Provisioneer decorators
-   * Groups controllers by layout type and builds complete LayoutRenderer objects
+   * Uses the LayoutRegistryService to check if layouts exist and adds commissar content to registered layouts
    */
   getAllLayoutRenderers(): LayoutRenderer[] {
     const layoutRenderers: LayoutRenderer[] = [];
@@ -60,9 +62,15 @@ export class XingineInspectorService {
       if (!layoutProperties && !provisioneerProperties) continue;
 
       // Use layoutMandate from new format or fall back to old format
-      const layoutType = layoutProperties?.type || 
-                        provisioneerProperties?.layoutMandate || 
-                        'default';
+      let layoutType = layoutProperties?.type || 
+                      provisioneerProperties?.layoutMandate || 
+                      'default';
+
+      // Check if the specified layout exists in the registry
+      if (!this.layoutRegistryService.hasLayout(layoutType)) {
+        console.warn(`Layout '${layoutType}' not found in registry, falling back to 'default' layout`);
+        layoutType = 'default';
+      }
 
       if (!layoutGroups.has(layoutType)) {
         layoutGroups.set(layoutType, {
@@ -73,32 +81,27 @@ export class XingineInspectorService {
       layoutGroups.get(layoutType)!.controllers.push(controller);
     }
 
-    // Build LayoutRenderer for each layout type
+    // Build LayoutRenderer for each layout type using registry
     for (const [layoutType, { provisioneerProperties, controllers }] of layoutGroups) {
       const commissarRoutes = this.extractCommissarRoutes(controllers);
       
-      // Create base layout based on type
-      let baseLayout: LayoutRenderer;
-      if (layoutType === 'login') {
-        baseLayout = createLoginLayout();
-      } else {
-        baseLayout = createDefaultLayout();
-      }
-
-      // Build enhanced layout renderer
+      // Get base layout from registry (with fallback to default)
+      const baseLayout = this.layoutRegistryService.getLayoutWithFallback(layoutType);
+      
+      // Clone the base layout and add commissar content
       const layoutRenderer: LayoutRenderer = {
+        ...baseLayout,
         type: layoutType,
-        header: this.buildHeaderComponent(layoutType, controllers),
-        sider: layoutType !== 'login' ? this.buildSiderComponent(layoutType, controllers) : undefined,
         content: {
-          style: { className: 'layout-content' },
-          meta: commissarRoutes
-        },
-        footer: this.buildFooterComponent(layoutType, controllers),
-        style: {
-          className: `layout-${layoutType}`
+          style: baseLayout.content?.style || { className: 'layout-content' },
+          meta: commissarRoutes // Add commissar routes to the content
         }
       };
+
+      // Ensure style is set with proper className if not already present
+      if (!layoutRenderer.style) {
+        layoutRenderer.style = { className: `layout-${layoutType}` };
+      }
 
       layoutRenderers.push(layoutRenderer);
     }
@@ -351,33 +354,6 @@ export class XingineInspectorService {
       postActionValid, 
       errors: errors.length > 0 ? errors : undefined 
     };
-  }
-
-  /**
-   * Build header component for layout type
-   */
-  private buildHeaderComponent(layoutType: string, controllers: Constructor<unknown>[]): { style?: any; meta?: LayoutComponentDetail } {
-    // Get base template
-    const baseLayout = layoutType === 'login' ? createLoginLayout() : createDefaultLayout();
-    return baseLayout.header || { style: { className: 'layout-header' } };
-  }
-
-  /**
-   * Build sider component for layout type
-   */
-  private buildSiderComponent(layoutType: string, controllers: Constructor<unknown>[]): { style?: any; meta?: LayoutComponentDetail } {
-    // Get base template
-    const baseLayout = createDefaultLayout();
-    return baseLayout.sider || { style: { className: 'layout-sider' } };
-  }
-
-  /**
-   * Build footer component for layout type
-   */
-  private buildFooterComponent(layoutType: string, controllers: Constructor<unknown>[]): { style?: any; meta?: LayoutComponentDetail } {
-    // Get base template
-    const baseLayout = layoutType === 'login' ? createLoginLayout() : createDefaultLayout();
-    return baseLayout.footer || { style: { className: 'layout-footer' } };
   }
 
   /**
