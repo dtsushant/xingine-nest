@@ -3,6 +3,10 @@ import { XingineModule } from '../xingine.module';
 import { XingineInspectorService } from '../xingine-inspector.service';
 import { LayoutRegistryService } from '../services/layout-registry.service';
 import { LayoutComponentDetailBuilder, LayoutRendererBuilder, LayoutRenderer, Commissar } from 'xingine';
+import { Controller, Get, Post, RequestMethod } from '@nestjs/common';
+import { PATH_METADATA, METHOD_METADATA } from '@nestjs/common/constants';
+import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
+import { Provisioneer, Commissar as CommissarDecorator } from '../xingine-nest.decorator';
 
 describe('LayoutRenderer System', () => {
   let module: TestingModule;
@@ -54,8 +58,8 @@ describe('LayoutRenderer System', () => {
     });
   });
 
-  describe('Complex LayoutRenderer Generation', () => {
-    it('should generate a comprehensive LayoutRenderer with form, table, detail, and chart components', () => {
+  describe('Complex LayoutRenderer Generation from Controller', () => {
+    it('should extract comprehensive LayoutRenderer from controller using @Provisioneer and @Commissar decorators', () => {
       // Test data as provided by the user
       const userFormFields = [
         {
@@ -115,254 +119,296 @@ describe('LayoutRenderer System', () => {
         permissions: ["read", "write", "admin"],
       };
 
-      // Create chart component using the builder
+      // Create test controller class with complex components
       const chartWrapperClass = `w-full h-[300px] bg-white p-4 shadow rounded`;
-      const chartComponent = LayoutComponentDetailBuilder.create()
-        .chart()
-        .charts([
-          {
-            type: "bar",
-            height: 300,
-            width: 300,
-            title: "Sales Performance",
-            labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-            datasets: [
+      
+      @Provisioneer({ layout: 'comprehensive-user-dashboard' })
+      @Controller('user-dashboard')
+      class ComplexUserDashboardController {
+        
+        @CommissarDecorator({
+          component: LayoutComponentDetailBuilder.create()
+            .chart()
+            .charts([
               {
-                label: "Sales",
-                data: [4000, 3000, 2000, 2780, 1890, 2390],
-                backgroundColor: "#1890ff",
-              },
-            ],
-            style: {
-              className: chartWrapperClass
-            }
-          },
-          {
-            type: "line",
-            title: "User Growth",
-            height: 300,
-            width: 300,
-            labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-            datasets: [
-              {
-                label: "Users",
-                data: [240, 221, 229, 200, 218, 250],
-                borderColor: "#52c41a",
-              },
-            ],
-            style: {
-              className: chartWrapperClass
-            }
-          },
-          {
-            type: "pie",
-            title: "Device Distribution",
-            height: 300,
-            width: 300,
-            datasets: [
-              {
-                label: "Devices",
-                data: [400, 300, 300, 200],
-                backgroundColor: "#1890ff",
-              },
-            ],
-            style: {
-              className: chartWrapperClass
-            },
-            labels: ["Desktop", "Mobile", "Tablet", "Other"],
-          },
-          {
-            type: "scatter",
-            title: "Revenue Analysis",
-            height: 300,
-            width: 300,
-            labels: ["Q1", "Q2", "Q3", "Q4"],
-            datasets: [
-              {
-                label: "Revenue",
-                data: [
-                  { x: 1, y: 2400 },
-                  { x: 2, y: 1398 },
-                  { x: 3, y: 9800 },
-                  { x: 4, y: 3908 },
+                type: "bar",
+                height: 300,
+                width: 300,
+                title: "Sales Performance",
+                labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+                datasets: [
+                  {
+                    label: "Sales",
+                    data: [4000, 3000, 2000, 2780, 1890, 2390],
+                    backgroundColor: "#1890ff",
+                  },
                 ],
-                backgroundColor: "#722ed1",
+                style: {
+                  className: chartWrapperClass
+                }
               },
-            ],
-            style: {
-              className: chartWrapperClass
+              {
+                type: "line",
+                title: "User Growth",
+                height: 300,
+                width: 300,
+                labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+                datasets: [
+                  {
+                    label: "Users",
+                    data: [240, 221, 229, 200, 218, 250],
+                    borderColor: "#52c41a",
+                  },
+                ],
+                style: {
+                  className: chartWrapperClass
+                }
+              },
+              {
+                type: "pie",
+                title: "Device Distribution",
+                height: 300,
+                width: 300,
+                datasets: [
+                  {
+                    label: "Devices",
+                    data: [400, 300, 300, 200],
+                    backgroundColor: "#1890ff",
+                  },
+                ],
+                style: {
+                  className: chartWrapperClass
+                },
+                labels: ["Desktop", "Mobile", "Tablet", "Other"],
+              },
+              {
+                type: "scatter",
+                title: "Revenue Analysis",
+                height: 300,
+                width: 300,
+                labels: ["Q1", "Q2", "Q3", "Q4"],
+                datasets: [
+                  {
+                    label: "Revenue",
+                    data: [
+                      { x: 1, y: 2400 },
+                      { x: 2, y: 1398 },
+                      { x: 3, y: 9800 },
+                      { x: 4, y: 3908 },
+                    ],
+                    backgroundColor: "#722ed1",
+                  },
+                ],
+                style: {
+                  className: chartWrapperClass
+                }
+              },
+            ])
+            .build(),
+          preAction: 'validateChartAccess'
+        })
+        @Get('charts')
+        getCharts() {
+          return { message: 'Chart data loaded' };
+        }
+
+        @CommissarDecorator({
+          component: LayoutComponentDetailBuilder.create()
+            .withMeta("FormRenderer", {
+              action: "handleUserCreate",
+              fields: userFormFields,
+              event: {
+                onSubmit: {
+                  action: 'navigate',
+                  args: {
+                    path: '/thank-you'
+                  }
+                },
+              },
+              properties: {
+                title: "Create User",
+                submitText: "Create User",
+                className: "bg-white dark:bg-gray-800 p-6 rounded-lg shadow",
+              },
+            } as any)
+            .build(),
+          postAction: 'logUserCreation'
+        })
+        @Post('form')
+        createUser() {
+          return { message: 'User creation form' };
+        }
+
+        @CommissarDecorator({
+          component: LayoutComponentDetailBuilder.create()
+            .table()
+            .dataSourceUrl("/api/users")
+            .columns([
+              { title: "Name", dataIndex: "name", key: "name", sortable: true },
+              { title: "Email", dataIndex: "email", key: "email", sortable: true },
+              { title: "Role", dataIndex: "role", key: "role", sortable: true },
+              { title: "Status", dataIndex: "active", key: "active" },
+              { title: "Created", dataIndex: "createdAt", key: "createdAt" },
+            ])
+            .build()
+        })
+        @Get('table')
+        getUserTable() {
+          return userTableData;
+        }
+
+        @CommissarDecorator({
+          component: LayoutComponentDetailBuilder.create()
+            .detailRenderer()
+            .action("viewUser")
+            .fields([
+              { name: "name", label: "Name", inputType: "text" as const, properties: {} },
+              {
+                name: "email",
+                label: "Email",
+                inputType: "text" as const,
+                properties: {},
+              },
+              {
+                name: "role",
+                label: "Role",
+                inputType: "badge" as const,
+                properties: {},
+              },
+              {
+                name: "active",
+                label: "Status",
+                inputType: "switch" as const,
+                properties: {},
+              },
+              {
+                name: "createdAt",
+                label: "Created",
+                inputType: "date" as const,
+                properties: {},
+              },
+              {
+                name: "lastLogin",
+                label: "Last Login",
+                inputType: "date" as const,
+                properties: {},
+              },
+            ])
+            .build(),
+          preAction: 'checkUserPermissions',
+          postAction: 'trackUserView'
+        })
+        @Get('details/:id')
+        getUserDetails() {
+          return userDetailData;
+        }
+
+        // Action methods
+        validateChartAccess() {
+          console.log('Validating chart access...');
+        }
+
+        logUserCreation() {
+          console.log('Logging user creation...');
+        }
+
+        checkUserPermissions() {
+          console.log('Checking user permissions...');
+        }
+
+        trackUserView() {
+          console.log('Tracking user detail view...');
+        }
+      }
+
+      // Mock the discovery service to return our test controller
+      const mockDiscoveryService = {
+        getControllers: () => [{ metatype: ComplexUserDashboardController }],
+        getProviders: () => []
+      } as any;
+
+      const mockMetadataScanner = {} as any;
+      const mockReflector = {
+        get: jest.fn().mockImplementation((metadata, target) => {
+          if (metadata === PATH_METADATA) {
+            if (target === ComplexUserDashboardController) {
+              return 'user-dashboard';
             }
-          },
-        ])
-        .build();
-
-      // Create form component using the builder
-      const formComponent = LayoutComponentDetailBuilder.create()
-        .withMeta("FormRenderer", {
-          action: "handleUserCreate",
-          fields: userFormFields,
-          event: {
-            onSubmit: {
-              action: 'navigate',
-              args: {
-                path: '/thank-you'
-              }
-            },
-          },
-          properties: {
-            title: "Create User",
-            submitText: "Create User",
-            className: "bg-white dark:bg-gray-800 p-6 rounded-lg shadow",
-          },
-        } as any)
-        .build();
-
-      // Create table component using the builder
-      const tableComponent = LayoutComponentDetailBuilder.create()
-        .table()
-        .dataSourceUrl("/api/users")
-        .columns([
-          { title: "Name", dataIndex: "name", key: "name", sortable: true },
-          { title: "Email", dataIndex: "email", key: "email", sortable: true },
-          { title: "Role", dataIndex: "role", key: "role", sortable: true },
-          { title: "Status", dataIndex: "active", key: "active" },
-          { title: "Created", dataIndex: "createdAt", key: "createdAt" },
-        ])
-        .build();
-
-      // Create detail component using the builder
-      const detailComponent = LayoutComponentDetailBuilder.create()
-        .detailRenderer()
-        .action("viewUser")
-        .fields([
-          { name: "name", label: "Name", inputType: "text" as const, properties: {} },
-          {
-            name: "email",
-            label: "Email",
-            inputType: "text" as const,
-            properties: {},
-          },
-          {
-            name: "role",
-            label: "Role",
-            inputType: "badge" as const,
-            properties: {},
-          },
-          {
-            name: "active",
-            label: "Status",
-            inputType: "switch" as const,
-            properties: {},
-          },
-          {
-            name: "createdAt",
-            label: "Created",
-            inputType: "date" as const,
-            properties: {},
-          },
-          {
-            name: "lastLogin",
-            label: "Last Login",
-            inputType: "date" as const,
-            properties: {},
-          },
-        ])
-        .build();
-
-      // Create popup component using the builder
-      const popupComponent = LayoutComponentDetailBuilder.create()
-        .popup()
-        .property("title", "User Profile Details")
-        .property("triggerText", "View Full Profile")
-        .property("width", 800)
-        .property("height", 600)
-        .property(
-          "content",
-          `
-            <div class="flex items-center space-x-4">
-              <img src="${userDetailData.profile.avatar}" alt="Profile" class="w-20 h-20 rounded-full">
-              <div>
-                <h2 class="text-2xl font-bold">${userDetailData.name}</h2>
-                <p class="text-gray-600">${userDetailData.profile.department} Department</p>
-              </div>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <h3 class="font-semibold mb-2">Contact Information</h3>
-                <p><strong>Email:</strong> ${userDetailData.email}</p>
-                <p><strong>Phone:</strong> ${userDetailData.profile.phone}</p>
-              </div>
-              <div>
-                <h3 class="font-semibold mb-2">Role & Permissions</h3>
-                <p><strong>Role:</strong> ${userDetailData.role}</p>
-                <p><strong>Permissions:</strong> ${userDetailData.permissions.join(", ")}</p>
-              </div>
-            </div>
-            <div>
-              <h3 class="font-semibold mb-2">Biography</h3>
-              <p>${userDetailData.profile.bio}</p>
-            </div>
-          `,
-        )
-        .build();
-
-      // Create comprehensive layout renderer using correct API
-      const layoutRenderer: LayoutRenderer = LayoutRendererBuilder.create()
-        .type("comprehensive-user-dashboard")
-        .className("min-h-screen bg-gray-50")
-        .addContentCommissar({
-          ...chartComponent,
-          path: "/dashboard/charts",
-          permission: ["read"]
+            // Return method-specific paths
+            const methodName = target?.name || '';
+            if (methodName === 'getCharts') return 'charts';
+            if (methodName === 'createUser') return 'form';
+            if (methodName === 'getUserTable') return 'table';
+            if (methodName === 'getUserDetails') return 'details/:id';
+          }
+          if (metadata === METHOD_METADATA) {
+            const methodName = target?.name || '';
+            if (methodName === 'getCharts') return RequestMethod.GET;
+            if (methodName === 'createUser') return RequestMethod.POST;
+            if (methodName === 'getUserTable') return RequestMethod.GET;
+            if (methodName === 'getUserDetails') return RequestMethod.GET;
+          }
+          return undefined;
         })
-        .addContentCommissar({
-          ...formComponent,
-          path: "/dashboard/form", 
-          permission: ["write"]
-        })
-        .addContentCommissar({
-          ...tableComponent,
-          path: "/dashboard/table",
-          permission: ["read"]
-        })
-        .addContentCommissar({
-          ...detailComponent,
-          path: "/dashboard/details",
-          permission: ["read"]
-        })
-        .build();
+      } as any;
 
-      // Assertions to verify the generated layout renderer
-      expect(layoutRenderer).toBeDefined();
-      expect(layoutRenderer.type).toBe('comprehensive-user-dashboard');
-      expect(layoutRenderer.style?.className).toContain('min-h-screen');
-      expect(layoutRenderer.content).toBeDefined();
-      expect(Array.isArray(layoutRenderer.content.meta)).toBe(true);
-      expect(layoutRenderer.content.meta.length).toBe(4);
+      // Create inspector service with mocked dependencies
+      const testInspectorService = new XingineInspectorService(
+        mockDiscoveryService,
+        mockMetadataScanner,
+        mockReflector
+      );
 
-      // Verify chart component exists and has correct data
-      const chartSection = layoutRenderer.content.meta[0];
-      expect(chartSection.path).toBe('/dashboard/charts');
-      expect(chartSection.permission).toContain('read');
-      expect(chartSection.meta).toBeDefined();
+      // Extract layout renderers from the controller
+      const layoutRenderers = testInspectorService.getAllLayoutRenderers();
 
-      // Verify form component data
-      const formSection = layoutRenderer.content.meta[1];
-      expect(formSection.path).toBe('/dashboard/form');
-      expect(formSection.permission).toContain('write');
-      expect(formSection.meta).toBeDefined();
+      // Assertions to verify the extracted layout renderer
+      expect(layoutRenderers).toBeDefined();
+      expect(Array.isArray(layoutRenderers)).toBe(true);
+      expect(layoutRenderers.length).toBeGreaterThan(0);
 
-      // Verify table component data
-      const tableSection = layoutRenderer.content.meta[2];
-      expect(tableSection.path).toBe('/dashboard/table');
-      expect(tableSection.meta).toBeDefined();
+      // Find our comprehensive dashboard layout
+      const dashboardLayout = layoutRenderers.find(lr => lr.type === 'comprehensive-user-dashboard');
+      expect(dashboardLayout).toBeDefined();
 
-      // Verify detail component data
-      const detailSection = layoutRenderer.content.meta[3];
-      expect(detailSection.path).toBe('/dashboard/details');
-      expect(detailSection.meta).toBeDefined();
+      // Verify content structure
+      expect(dashboardLayout!.content).toBeDefined();
+      expect(Array.isArray(dashboardLayout!.content.meta)).toBe(true);
+      expect(dashboardLayout!.content.meta.length).toBe(4);
 
-      // Additional assertions to verify the data integrity
+      // Verify chart component
+      const chartRoute = dashboardLayout!.content.meta.find(route => {
+        const path = typeof route.path === 'string' ? route.path : route.path?.path;
+        return path?.includes('charts');
+      });
+      expect(chartRoute).toBeDefined();
+      expect(chartRoute!.meta).toBeDefined();
+
+      // Verify form component  
+      const formRoute = dashboardLayout!.content.meta.find(route => {
+        const path = typeof route.path === 'string' ? route.path : route.path?.path;
+        return path?.includes('form');
+      });
+      expect(formRoute).toBeDefined();
+      expect(formRoute!.meta).toBeDefined();
+
+      // Verify table component
+      const tableRoute = dashboardLayout!.content.meta.find(route => {
+        const path = typeof route.path === 'string' ? route.path : route.path?.path;
+        return path?.includes('table');
+      });
+      expect(tableRoute).toBeDefined();
+      expect(tableRoute!.meta).toBeDefined();
+
+      // Verify detail component
+      const detailRoute = dashboardLayout!.content.meta.find(route => {
+        const path = typeof route.path === 'string' ? route.path : route.path?.path;
+        return path?.includes('details');
+      });
+      expect(detailRoute).toBeDefined();
+      expect(detailRoute!.meta).toBeDefined();
+
+      // Additional data integrity assertions
       expect(userFormFields).toHaveLength(3);
       expect(userFormFields[0].name).toBe('name');
       expect(userFormFields[1].name).toBe('email');
@@ -375,13 +421,13 @@ describe('LayoutRenderer System', () => {
       expect(userDetailData.profile.department).toBe('Engineering');
       expect(userDetailData.permissions).toContain('admin');
 
-      console.log('✅ LayoutRenderer generated successfully with comprehensive user dashboard components');
-      console.log('📊 Chart component metadata:', chartComponent.meta?.component || 'No chart metadata');
-      console.log('📝 Form fields:', userFormFields.length);
-      console.log('📋 Table rows:', userTableData.length);
-      console.log('👤 User detail fields:', userDetailData.profile ? 'Profile loaded' : 'No profile');
-      console.log('🎯 Layout type:', layoutRenderer.type);
-      console.log('📦 Content sections:', layoutRenderer.content.meta.length);
+      console.log('✅ LayoutRenderer extracted successfully from controller with @Provisioneer and @Commissar decorators');
+      console.log('🎯 Layout type:', dashboardLayout!.type);
+      console.log('📦 Content sections extracted:', dashboardLayout!.content.meta.length);
+      console.log('📊 Chart route found:', !!chartRoute);
+      console.log('📝 Form route found:', !!formRoute);
+      console.log('📋 Table route found:', !!tableRoute);
+      console.log('👤 Detail route found:', !!detailRoute);
     });
   });
 });
