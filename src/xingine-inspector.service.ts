@@ -43,6 +43,7 @@ export class XingineInspectorService {
   /**
    * Get all layout renderers by scanning controllers with @Provisioneer decorators
    * Uses the LayoutRegistryService to check if layouts exist and adds commissar content to registered layouts
+   * Handles layout overrides where @Commissar can specify different layout than controller's @Provisioneer
    */
   getAllLayoutRenderers(): LayoutRenderer[] {
     const layoutRenderers: LayoutRenderer[] = [];
@@ -53,6 +54,9 @@ export class XingineInspectorService {
       provisioneerProperties: any;
       controllers: Constructor<unknown>[];
     }>();
+
+    // Collect layout overrides separately
+    const layoutOverrides = new Map<string, Commissar[]>();
 
     for (const controller of controllers) {
       // Try new format first
@@ -79,11 +83,20 @@ export class XingineInspectorService {
         });
       }
       layoutGroups.get(layoutType)!.controllers.push(controller);
+
+      // Extract any layout overrides from this controller
+      const overriddenRoutes = this.extractLayoutOverrideRoutes(controller);
+      for (const [overrideLayoutType, routes] of overriddenRoutes) {
+        if (!layoutOverrides.has(overrideLayoutType)) {
+          layoutOverrides.set(overrideLayoutType, []);
+        }
+        layoutOverrides.get(overrideLayoutType)!.push(...routes);
+      }
     }
 
     // Build LayoutRenderer for each layout type using registry
     for (const [layoutType, { provisioneerProperties, controllers }] of layoutGroups) {
-      const commissarRoutes = this.extractCommissarRoutes(controllers);
+      const commissarRoutes = this.extractCommissarRoutes(controllers, layoutType);
       
       // Get base layout from registry (with fallback to default)
       const baseLayout = this.layoutRegistryService.getLayoutWithFallback(layoutType);
@@ -104,6 +117,45 @@ export class XingineInspectorService {
       }
 
       layoutRenderers.push(layoutRenderer);
+    }
+
+    // Handle layout overrides - add overridden routes to target layouts
+    for (const [overrideLayoutType, overriddenRoutes] of layoutOverrides) {
+      // Check if target layout exists in registry
+      if (!this.layoutRegistryService.hasLayout(overrideLayoutType)) {
+        console.warn(`Override target layout '${overrideLayoutType}' not found in registry, adding to default layout`);
+        // Add to default layout instead
+        const defaultLayout = layoutRenderers.find(lr => lr.type === 'default');
+        if (defaultLayout) {
+          defaultLayout.content.meta.push(...overriddenRoutes);
+        }
+        continue;
+      }
+
+      // Find existing layout renderer or create new one
+      let targetLayoutRenderer = layoutRenderers.find(lr => lr.type === overrideLayoutType);
+      
+      if (!targetLayoutRenderer) {
+        // Create new layout renderer for the override target
+        const baseLayout = this.layoutRegistryService.getLayoutWithFallback(overrideLayoutType);
+        targetLayoutRenderer = {
+          ...baseLayout,
+          type: overrideLayoutType,
+          content: {
+            style: baseLayout.content?.style || { className: 'layout-content' },
+            meta: []
+          }
+        };
+        
+        if (!targetLayoutRenderer.style) {
+          targetLayoutRenderer.style = { className: `layout-${overrideLayoutType}` };
+        }
+        
+        layoutRenderers.push(targetLayoutRenderer);
+      }
+      
+      // Add overridden routes to target layout
+      targetLayoutRenderer.content.meta.push(...overriddenRoutes);
     }
 
     return layoutRenderers;
@@ -243,8 +295,9 @@ export class XingineInspectorService {
 
   /**
    * Extract commissar routes from controllers supporting both old and new formats
+   * Now filters out routes that have layout overrides for other layouts
    */
-  private extractCommissarRoutes(controllers: Constructor<unknown>[]): Commissar[] {
+  private extractCommissarRoutes(controllers: Constructor<unknown>[], currentLayoutType: string): Commissar[] {
     const commissarRoutes: Commissar[] = [];
     
     for (const controller of controllers) {
@@ -259,11 +312,13 @@ export class XingineInspectorService {
         const commissar = getEnhancedCommissarProperties(controller, methodName);
         if (!commissar) continue;
 
-        // Check for layout override
+        // Check for layout override - skip if it overrides to a different layout
         const pathConfig = 'path' in commissar ? commissar.path : (commissar as any).layout;
         if (typeof pathConfig === 'object' && 'overrideLayout' in pathConfig && pathConfig.overrideLayout) {
-          // Skip routes that override to different layouts for this layout group
-          continue;
+          if (pathConfig.overrideLayout !== currentLayoutType) {
+            // Skip routes that override to different layouts - they'll be handled separately
+            continue;
+          }
         }
 
         // Generate automatic path from controller + method routes
@@ -322,6 +377,87 @@ export class XingineInspectorService {
     }
     
     return commissarRoutes;
+  }
+
+  /**
+   * Extract layout override routes from a controller
+   * Returns a map of target layout types to their overridden routes
+   */
+  private extractLayoutOverrideRoutes(controller: Constructor<unknown>): Map<string, Commissar[]> {
+    const overrideRoutes = new Map<string, Commissar[]>();
+    
+    const controllerPath = this.reflector.get<string>(PATH_METADATA, controller) || '';
+    const prototype = controller.prototype;
+    const methodNames = Object.getOwnPropertyNames(prototype).filter(
+      (name) => typeof prototype[name] === 'function' && name !== 'constructor'
+    );
+
+    for (const methodName of methodNames) {
+      const commissar = getEnhancedCommissarProperties(controller, methodName);
+      if (!commissar) continue;
+
+      // Check for layout override
+      const pathConfig = 'path' in commissar ? commissar.path : (commissar as any).layout;
+      if (!(typeof pathConfig === 'object' && 'overrideLayout' in pathConfig && pathConfig.overrideLayout)) {
+        continue; // Not an override route
+      }
+
+      const targetLayoutType = pathConfig.overrideLayout;
+
+      // Generate automatic path from controller + method routes
+      const methodRoutePath = this.reflector.get<string>(PATH_METADATA, prototype[methodName]) || '';
+      const autoGeneratedPath = `/${controllerPath}/${methodRoutePath}`.replace(/\/+/g, '/');
+      
+      // Determine final path
+      let finalPath: string;
+      if ('path' in commissar) {
+        finalPath = typeof commissar.path === 'string' 
+          ? commissar.path 
+          : (typeof commissar.path === 'object' && commissar.path?.path) 
+            ? commissar.path.path 
+            : autoGeneratedPath;
+      } else {
+        finalPath = autoGeneratedPath;
+      }
+
+      // Get component definition
+      let component: LayoutComponentDetail | undefined;
+      if ('component' in commissar && commissar.component) {
+        if (typeof commissar.component === 'object') {
+          component = commissar.component;
+        }
+      } else {
+        continue;
+      }
+
+      if (!component) {
+        console.warn(`Warning: ${controller.name}.${methodName} @Commissar override decorator missing component definition`);
+        continue;
+      }
+
+      // Validate action methods
+      if ('preAction' in commissar || 'postAction' in commissar) {
+        const actionValidation = this.validateCommissarActions(controller, commissar as CommissarOptions);
+        if (!actionValidation.preActionValid || !actionValidation.postActionValid) {
+          console.error(`Error: ${controller.name}.${methodName} has invalid override action references`);
+          continue;
+        }
+      }
+
+      // Build override route
+      const route: Commissar = {
+        ...component,
+        path: finalPath,
+        permission: (commissar as any).permissions || []
+      };
+
+      if (!overrideRoutes.has(targetLayoutType)) {
+        overrideRoutes.set(targetLayoutType, []);
+      }
+      overrideRoutes.get(targetLayoutType)!.push(route);
+    }
+    
+    return overrideRoutes;
   }
 
   /**
