@@ -68,6 +68,7 @@ describe('extractMeta test', () => {
   it('Nested option decoder test', () => {
     const nestedOptions = [
       {
+        label:'User Module',
         value: 'UserModule',
         children: [
           {
@@ -81,6 +82,7 @@ describe('extractMeta test', () => {
         ],
       },
       {
+        label:'Category Module',
         value: 'CategoryModule',
         children: [
           {
@@ -94,6 +96,7 @@ describe('extractMeta test', () => {
         ],
       },
       {
+        label:'Rule Module',
         value: 'RuleModule',
         children: [
           {
