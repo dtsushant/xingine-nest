@@ -107,7 +107,7 @@ export class XingineInspectorService {
         type: layoutType,
         content: {
           style: baseLayout.content?.style || { className: 'layout-content' },
-          meta: commissarRoutes // Add commissar routes to the content
+          meta: [...baseLayout.content.meta,...commissarRoutes] // Add commissar routes to the content
         }
       };
 
