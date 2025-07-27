@@ -1,10 +1,9 @@
-import { extractMeta } from './utils/commissar.utils';
 import {
   Constructor,
   PROVISIONEER_METADATA,
-  CommissarProperties, ComponentMetaMap,
+   ComponentMetaMap,
 } from 'xingine';
-import { ProvisioneerOptions, CommissarOptions, PathProperties } from './interfaces/layout-interfaces';
+import { ProvisioneerOptions, CommissarOptions } from './interfaces/layout-interfaces';
 
 export const COMMISSAR_METADATA = 'xingine:provisioneer:commissar';
 export const PROVISIONEER_LAYOUT_METADATA = 'xingine:provisioneer:layout';
@@ -114,17 +113,8 @@ export function getCommissarProperties(
 export function getEnhancedCommissarProperties(
   provisioneer: Constructor,
   actionName: string,
-): CommissarOptions | CommissarProperties | undefined {
+): CommissarOptions | undefined {
   const action = provisioneer.prototype[actionName as string | symbol];
   if (typeof action !== 'function') return undefined;
-
-  // Try new format first
-  const newFormat = Reflect.getMetadata(COMMISSAR_METADATA, action) as CommissarOptions | undefined;
-  if (newFormat && newFormat.component) {
-    return newFormat;
-  }
-
-  // Fall back to old format for backward compatibility
-  const oldFormat = Reflect.getMetadata(COMMISSAR_METADATA, action) as CommissarProperties | undefined;
-  return oldFormat;
+ return Reflect.getMetadata(COMMISSAR_METADATA, action) as CommissarOptions | undefined;
 }

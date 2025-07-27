@@ -1,7 +1,7 @@
 import { Injectable, ExecutionContext, BadRequestException, CallHandler, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Observable, from } from 'rxjs';
-import { getEnhancedCommissarProperties, COMMISSAR_METADATA } from '../xingine-nest.decorator';
+import { COMMISSAR_METADATA } from '../xingine-nest.decorator';
 import { CommissarOptions } from '../interfaces/layout-interfaces';
 
 /**
@@ -12,7 +12,7 @@ import { CommissarOptions } from '../interfaces/layout-interfaces';
 export class CommissarActionInterceptor implements NestInterceptor {
   constructor(private readonly reflector: Reflector) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const handler = context.getHandler();
     const controller = context.getClass();
     

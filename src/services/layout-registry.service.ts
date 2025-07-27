@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { LayoutRenderer } from 'xingine';
-import { createDefaultLayout, createLoginLayout } from '../templates/layout-templates';
+import { createDefaultLayout } from '../templates/layout-templates';
 
 /**
  * Service for managing layout registry and layout template registration
@@ -117,8 +117,5 @@ export class LayoutRegistryService {
   private initializeDefaultLayouts(): void {
     // Register the default layout - provided by library and always available
     this.layouts.set('default', createDefaultLayout());
-    
-    // Register basic login layout - can be overridden by client application
-    this.layouts.set('login', createLoginLayout());
   }
 }

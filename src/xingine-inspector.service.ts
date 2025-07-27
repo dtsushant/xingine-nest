@@ -1,34 +1,28 @@
-import { Injectable, RequestMethod, Type } from '@nestjs/common';
+import { Injectable, RequestMethod } from '@nestjs/common';
 import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
 import {
   Constructor,
-  extractRouteParams,
-  getProvisioneerProperties,
   GroupedPermission,
-  ModuleProperties,
   Permission,
   LayoutRenderer,
   LayoutComponentDetail,
-  PathProperties,
   Commissar,
-  ProvisioneerProperties,
-  LayoutRendererBuilder,
+  TypedLayoutExposition,
+  LayoutExpositionMap,
+  LayoutComponentRegistryImpl,
+  LayoutExpositionUtils,
+  layoutUtils
 } from 'xingine';
 
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { 
-  getCommissarProperties, 
   getEnhancedCommissarProperties,
   getProvisioneerLayoutProperties,
-  PROVISIONEER_LAYOUT_METADATA 
 } from './xingine-nest.decorator';
-import { extractMeta } from './utils/commissar.utils';
-import { 
-  CommissarOptions, 
-  PathProperties as EnhancedPathProperties,
-  ActionValidationResult 
+import {
+  ActionValidationResult,
+  CommissarOptions
 } from './interfaces/layout-interfaces';
-import { createDefaultLayout, createLoginLayout } from './templates/layout-templates';
 import { LayoutRegistryService } from './services/layout-registry.service';
 
 @Injectable()
@@ -61,13 +55,11 @@ export class XingineInspectorService {
     for (const controller of controllers) {
       // Try new format first
       const layoutProperties = getProvisioneerLayoutProperties(controller);
-      const provisioneerProperties = getProvisioneerProperties(controller);
-      
-      if (!layoutProperties && !provisioneerProperties) continue;
+
+      if (!layoutProperties) continue;
 
       // Use layoutMandate from new format or fall back to old format
       let layoutType = layoutProperties?.type || 
-                      provisioneerProperties?.layoutMandate || 
                       'default';
 
       // Check if the specified layout exists in the registry
@@ -78,7 +70,7 @@ export class XingineInspectorService {
 
       if (!layoutGroups.has(layoutType)) {
         layoutGroups.set(layoutType, {
-          provisioneerProperties: layoutProperties || provisioneerProperties,
+          provisioneerProperties: layoutProperties ,
           controllers: []
         });
       }
@@ -161,10 +153,168 @@ export class XingineInspectorService {
     return layoutRenderers;
   }
 
-  getAllModuleProperties(): ModuleProperties[] {
-    const modules = this.discoveryService.getProviders();
+  /**
+   * Get all TypedLayoutExposition objects by scanning controllers with @Provisioneer decorators
+   * Creates TypedLayoutExposition instances that directly map to LayoutRenderer format
+   * Uses the layout exposition utilities to properly build and validate layouts
+   */
+  getAllTypedLayoutExpositions(): TypedLayoutExposition[] {
+    const expositions: TypedLayoutExposition[] = [];
+    const controllers = this.getAllControllers();
 
-    return this.fetchMappedModules();
+    // Create a layout registry for component registration
+    const registry = new LayoutComponentRegistryImpl();
+
+    // Group controllers by layout type from layoutMandate
+    const layoutGroups = new Map<string, {
+      provisioneerProperties: any;
+      controllers: Constructor<unknown>[];
+    }>();
+
+    // Collect layout overrides separately
+    const layoutOverrides = new Map<string, Commissar[]>();
+
+    for (const controller of controllers) {
+      const layoutProperties = getProvisioneerLayoutProperties(controller);
+      if (!layoutProperties) continue;
+
+      let layoutType = layoutProperties?.type || 'default';
+
+      // Check if the specified layout exists in the registry
+      if (!this.layoutRegistryService.hasLayout(layoutType)) {
+        console.warn(`Layout '${layoutType}' not found in registry, falling back to 'default' layout`);
+        layoutType = 'default';
+      }
+
+      if (!layoutGroups.has(layoutType)) {
+        layoutGroups.set(layoutType, {
+          provisioneerProperties: layoutProperties,
+          controllers: []
+        });
+      }
+      layoutGroups.get(layoutType)!.controllers.push(controller);
+
+      // Extract any layout overrides from this controller
+      const overriddenRoutes = this.extractLayoutOverrideRoutes(controller);
+      for (const [overrideLayoutType, routes] of overriddenRoutes) {
+        if (!layoutOverrides.has(overrideLayoutType)) {
+          layoutOverrides.set(overrideLayoutType, []);
+        }
+        layoutOverrides.get(overrideLayoutType)!.push(...routes);
+      }
+    }
+
+    // Build TypedLayoutExposition for each layout type
+    for (const [layoutType, { provisioneerProperties, controllers }] of layoutGroups) {
+      const commissarRoutes = this.extractCommissarRoutes(controllers, layoutType);
+      
+      // Get base layout from registry
+      const baseLayout = this.layoutRegistryService.getLayoutWithFallback(layoutType);
+      
+      // Register commissar components in the registry and collect keys
+      const assemblyKeys: string[] = [];
+      commissarRoutes.forEach((commissar, index) => {
+        const key = `${layoutType}_commissar_${index}`;
+        registry.register(key, commissar);
+        assemblyKeys.push(key);
+      });
+
+      // Register and collect keys for base layout components
+      let presidiumKey: string | undefined;
+      let siderKey: string | undefined;
+      let doctrineKey: string | undefined;
+
+      if (baseLayout.header?.meta) {
+        presidiumKey = `${layoutType}_header`;
+        registry.register(presidiumKey, baseLayout.header.meta);
+      }
+
+      if (baseLayout.sider?.meta) {
+        siderKey = `${layoutType}_sider`;
+        registry.register(siderKey, baseLayout.sider.meta);
+      }
+
+      if (baseLayout.footer?.meta) {
+        doctrineKey = `${layoutType}_footer`;
+        registry.register(doctrineKey, baseLayout.footer.meta);
+      }
+
+      // Create TypedLayoutExposition that maps directly to LayoutRenderer structure
+      const exposition: TypedLayoutExposition = {
+        type: layoutType,
+        presidium: presidiumKey,         // header -> presidium (component key)
+        assembly: assemblyKeys,          // content -> assembly (component keys)
+        sider: siderKey,                 // sider -> sider (component key)
+        doctrine: doctrineKey            // footer -> doctrine (component key)
+      };
+
+      expositions.push(exposition);
+    }
+
+    // Handle layout overrides - add overridden routes to target layouts
+    for (const [overrideLayoutType, overriddenRoutes] of layoutOverrides) {
+      // Check if target layout exists in registry
+      if (!this.layoutRegistryService.hasLayout(overrideLayoutType)) {
+        console.warn(`Override target layout '${overrideLayoutType}' not found in registry, adding to default layout`);
+        // Add to default layout instead
+        const defaultExposition = expositions.find(exp => exp.type === 'default');
+        if (defaultExposition) {
+          // Register override components and add keys to assembly
+          overriddenRoutes.forEach((commissar, index) => {
+            const key = `default_override_${index}`;
+            registry.register(key, commissar);
+            defaultExposition.assembly.push(key);
+          });
+        }
+        continue;
+      }
+
+      // Find existing exposition or create new one
+      let targetExposition = expositions.find(exp => exp.type === overrideLayoutType);
+      
+      if (!targetExposition) {
+        // Create new exposition for the override target
+        const baseLayout = this.layoutRegistryService.getLayoutWithFallback(overrideLayoutType);
+        
+        // Register and collect keys for base layout components
+        let presidiumKey: string | undefined;
+        let siderKey: string | undefined;
+        let doctrineKey: string | undefined;
+
+        if (baseLayout.header?.meta) {
+          presidiumKey = `${overrideLayoutType}_header`;
+          registry.register(presidiumKey, baseLayout.header.meta);
+        }
+
+        if (baseLayout.sider?.meta) {
+          siderKey = `${overrideLayoutType}_sider`;
+          registry.register(siderKey, baseLayout.sider.meta);
+        }
+
+        if (baseLayout.footer?.meta) {
+          doctrineKey = `${overrideLayoutType}_footer`;
+          registry.register(doctrineKey, baseLayout.footer.meta);
+        }
+
+        targetExposition = {
+          type: overrideLayoutType,
+          presidium: presidiumKey,
+          assembly: [],
+          sider: siderKey,
+          doctrine: doctrineKey
+        };
+        expositions.push(targetExposition);
+      }
+      
+      // Register override components and add keys to assembly
+      overriddenRoutes.forEach((commissar, index) => {
+        const key = `${overrideLayoutType}_override_${index}`;
+        registry.register(key, commissar);
+        targetExposition!.assembly.push(key);
+      });
+    }
+
+    return expositions;
   }
 
   getAllControllerPath(): GroupedPermission {
@@ -221,77 +371,7 @@ export class XingineInspectorService {
       );
   }
 
-  private fetchMappedModules(): ModuleProperties[] {
-    const moduleProperties: ModuleProperties[] = [];
 
-    const controllers = this.getAllControllers();
-
-    for (const controller of controllers) {
-      const provisioneerProperties = getProvisioneerProperties(controller);
-
-      if (!provisioneerProperties) continue;
-
-      const controllerPath =
-        this.reflector.get<string>(PATH_METADATA, controller) || '';
-      const prototype = controller.prototype;
-
-      const mod: ModuleProperties = {
-        name: provisioneerProperties.name!,
-        uiComponent: [],
-        permissions: [],
-      };
-      moduleProperties.push(mod);
-
-      const methodNames = Object.getOwnPropertyNames(prototype).filter(
-        (name) =>
-          typeof prototype[name] === 'function' && name !== 'constructor',
-      );
-
-      for (const methodName of methodNames) {
-        const commissar = getCommissarProperties(controller, methodName);
-        if (!commissar) continue;
-
-        const routePath = this.reflector.get<string>(
-          PATH_METADATA,
-          prototype[methodName],
-        );
-        const method = this.reflector.get<RequestMethod>(
-          METHOD_METADATA,
-          prototype[methodName],
-        );
-        let fullPath: string | undefined = undefined;
-        let uiPath = `/${provisioneerProperties?.name}/${methodName}`;
-        if (routePath !== undefined && method !== undefined) {
-          const methodString = RequestMethod[method];
-          fullPath = `/${controllerPath}/${routePath}`.replace(/\/+/g, '/');
-          console.log(`[${methodString}] ${fullPath}`);
-        }
-
-        const slugs = extractRouteParams(fullPath ?? '');
-        if (slugs.length >= 1) {
-          uiPath += slugs.reduce((acc, key) => {
-            return `${acc}/:${key}`;
-          }, '');
-        }
-
-        // Only process old format commissars for backward compatibility
-        if ('operative' in commissar && 'directive' in commissar) {
-          const legacyCommissar = commissar as any;
-          const componentMeta = extractMeta(legacyCommissar, fullPath ?? '');
-
-          const uiComponent = {
-            component: typeof legacyCommissar.component === 'string' ? legacyCommissar.component : 'Unknown',
-            layout: legacyCommissar.layout || 'default',
-            path: uiPath,
-            meta: componentMeta,
-          };
-
-          mod.uiComponent?.push(uiComponent);
-        }
-      }
-    }
-    return moduleProperties;
-  }
 
   /**
    * Extract commissar routes from controllers supporting both old and new formats
@@ -460,35 +540,36 @@ export class XingineInspectorService {
     return overrideRoutes;
   }
 
+  //TODO:- Provide implementation to validate the preAction and postAction serializable action
   /**
    * Validate that preAction and postAction methods exist on controller
    */
   private validateCommissarActions(
-    controller: Constructor<unknown>, 
+    controller: Constructor<unknown>,
     commissar: CommissarOptions
   ): ActionValidationResult {
     const prototype = controller.prototype;
-    
-    const preActionValid = !commissar.preAction || 
-      (typeof prototype[commissar.preAction] === 'function');
-      
-    const postActionValid = !commissar.postAction || 
-      (typeof prototype[commissar.postAction] === 'function');
+
+    const preActionValid = true;
+
+    const postActionValid = true;
+
+    console.warn("Validation for pre and post action not available");
 
     const errors: string[] = [];
-    
+
     if (!preActionValid) {
       errors.push(`Missing preAction method: ${commissar.preAction}`);
     }
-    
+
     if (!postActionValid) {
       errors.push(`Missing postAction method: ${commissar.postAction}`);
     }
 
-    return { 
-      preActionValid, 
-      postActionValid, 
-      errors: errors.length > 0 ? errors : undefined 
+    return {
+      preActionValid,
+      postActionValid,
+      errors: errors.length > 0 ? errors : undefined
     };
   }
 
