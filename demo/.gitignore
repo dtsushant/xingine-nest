@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+dist/
+*.log
+*.tgz
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Database
+*.db
+*.sqlite
+
+# MikroORM
+temp/
+
+# Yalc
+.yalc/
+yalc.lock

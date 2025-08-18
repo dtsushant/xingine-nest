@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { DiscoveryModule, MetadataScanner } from '@nestjs/core';
+import { DiscoveryModule } from '@nestjs/core';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { XingineInspectorService } from './xingine-inspector.service';
 import { LayoutRegistryService } from './services/layout-registry.service';
@@ -10,7 +10,6 @@ import { LayoutController } from './controllers/layout.controller';
   imports: [DiscoveryModule],
   providers: [
     XingineInspectorService, 
-    MetadataScanner, 
     LayoutRegistryService,
     {
       provide: APP_INTERCEPTOR,

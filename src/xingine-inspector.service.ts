@@ -29,7 +29,6 @@ import { LayoutRegistryService } from './services/layout-registry.service';
 export class XingineInspectorService {
   constructor(
     private readonly discoveryService: DiscoveryService,
-    private readonly metadataScanner: MetadataScanner,
     private readonly reflector: Reflector,
     private readonly layoutRegistryService: LayoutRegistryService,
   ) {}

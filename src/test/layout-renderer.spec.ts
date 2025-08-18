@@ -374,7 +374,6 @@ describe('LayoutRenderer System', () => {
       // Create inspector service with mocked dependencies
       const testInspectorService = new XingineInspectorService(
         mockDiscoveryService,
-        mockMetadataScanner,
         mockReflector,
         mockLayoutRegistryService
       );
@@ -529,7 +528,6 @@ describe('LayoutRenderer System', () => {
       // Create inspector service
       const testInspectorService = new XingineInspectorService(
         mockDiscoveryService,
-        mockMetadataScanner,
         mockReflector,
         mockLayoutRegistryService
       );
@@ -659,7 +657,6 @@ describe('LayoutRenderer System', () => {
       // Create inspector service
       const testInspectorService = new XingineInspectorService(
         mockDiscoveryService,
-        mockMetadataScanner,
         mockReflector,
         mockLayoutRegistryService
       );
@@ -822,7 +819,6 @@ describe('LayoutRenderer System', () => {
       // Create inspector service
       const testInspectorService = new XingineInspectorService(
         mockDiscoveryService,
-        mockMetadataScanner,
         mockReflector,
         mockLayoutRegistryService
       );
