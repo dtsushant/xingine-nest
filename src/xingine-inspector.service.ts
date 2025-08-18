@@ -1,5 +1,5 @@
-import { Injectable, RequestMethod } from '@nestjs/common';
-import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
+import { Injectable, RequestMethod, Optional, Inject } from '@nestjs/common';
+import { DiscoveryService, MetadataScanner, Reflector, ModulesContainer } from '@nestjs/core';
 import {
   Constructor,
   GroupedPermission,
@@ -28,9 +28,10 @@ import { LayoutRegistryService } from './services/layout-registry.service';
 @Injectable()
 export class XingineInspectorService {
   constructor(
-    private readonly discoveryService: DiscoveryService,
+    @Optional() private readonly discoveryService: DiscoveryService,
     private readonly reflector: Reflector,
     private readonly layoutRegistryService: LayoutRegistryService,
+    @Optional() @Inject(ModulesContainer) private readonly modulesContainer?: ModulesContainer,
   ) {}
 
   /**

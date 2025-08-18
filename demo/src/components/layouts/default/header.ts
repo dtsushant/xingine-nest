@@ -1,4 +1,4 @@
-import { LayoutComponentDetailBuilder } from 'xingine';
+import {LayoutComponentDetailBuilder, SerializableAction} from 'xingine';
 import {
   collapseIconMeta,
   darkModeIcon,
@@ -7,24 +7,53 @@ import {
   searchIcon,
 } from '../../icons/shared.svg-icons-meta';
 
+
+export const DEFAULT_STATE_KEYS = {
+    HAS_HEADER: 'hasHeader',
+    HAS_SIDER: 'hasSider',
+    HAS_FOOTER: 'hasFooter',
+    COLLAPSED: 'collapsed',
+    DARK_MODE: 'darkMode',
+    USER_DROPDOWN_OPEN: 'userDropdownOpen',
+    CURRENT_SCREEN_SIZE: 'currentScreenSize'
+} as const;
+
+// Default toggle actions that can be used by components
+export const DEFAULT_TOGGLE_ACTIONS = {
+    TOGGLE_COLLAPSE: {
+        action: 'toggleState',
+        args: {
+            key: DEFAULT_STATE_KEYS.COLLAPSED
+        }
+    } as SerializableAction,
+
+    TOGGLE_DARK_MODE: {
+        action: 'toggleState',
+        args: {
+            key: DEFAULT_STATE_KEYS.DARK_MODE
+        }
+    } as SerializableAction,
+
+    TOGGLE_USER_DROPDOWN: {
+        action: 'toggleState',
+        args: {
+            key: DEFAULT_STATE_KEYS.USER_DROPDOWN_OPEN
+        }
+    } as SerializableAction
+} as const;
 const collapseButton = LayoutComponentDetailBuilder.create()
   .button()
   .name('collapseButton')
   .icon(collapseIconMeta)
   .event({
-    onClick: {
-      action: 'toggleState',
-      args: {
-        key: 'collapsed',
-      },
-    },
+    onClick: DEFAULT_TOGGLE_ACTIONS.TOGGLE_COLLAPSE,
   })
   .className('p-2 rounded-md hover:bg-gray-100 transition-colors')
   .build();
 
 const homeButton = LayoutComponentDetailBuilder.create()
   .dynamic('LinkRenderer')
-  .property('path', '/dashboard')
+  .property('path', '/')
   .property('icon', homeIconMeta)
   .property('style', {
     className: 'p-2 rounded-md hover:bg-gray-100 transition-colors',
@@ -57,12 +86,7 @@ const middleSection = LayoutComponentDetailBuilder.create()
 const darkModeButton = LayoutComponentDetailBuilder.create()
   .button()
   .event({
-    onClick: {
-      action: 'toggleState',
-      args: {
-        key: 'darkMode',
-      },
-    },
+    onClick: DEFAULT_TOGGLE_ACTIONS.TOGGLE_DARK_MODE,
   })
   .name('DarkModeButton')
   .icon(darkModeIcon)
@@ -74,12 +98,7 @@ const darkModeButton = LayoutComponentDetailBuilder.create()
 const lightModeButton = LayoutComponentDetailBuilder.create()
   .button()
   .event({
-    onClick: {
-      action: 'toggleState',
-      args: {
-        key: 'darkMode',
-      },
-    },
+    onClick: DEFAULT_TOGGLE_ACTIONS.TOGGLE_DARK_MODE,
   })
   .name('LightModeButton')
   .icon(lightModeIcon)
@@ -114,12 +133,7 @@ const notificationComponent = LayoutComponentDetailBuilder.create()
 const userMenuToggle = LayoutComponentDetailBuilder.create()
   .button()
   .event({
-    onClick: {
-      action: 'toggleState',
-      args: {
-        key: 'userDropdownOpen',
-      },
-    },
+    onClick: DEFAULT_TOGGLE_ACTIONS.TOGGLE_USER_DROPDOWN,
   })
   .name('userDropdown')
   .content(

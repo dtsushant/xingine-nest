@@ -296,7 +296,7 @@ const imageRendererExample: LayoutComponentDetail =
 
 // Create dashboard content with nested structure
 export const DEFAULT_DASHBOARD_COMMISAR = CommissarBuilder.create()
-  .path('/home')
+  .path('/')
   .wrapper()
   .className('min-h-full max-w-full w-full')
   .addChild(
@@ -304,7 +304,7 @@ export const DEFAULT_DASHBOARD_COMMISAR = CommissarBuilder.create()
     LayoutComponentDetailBuilder.create()
       .wrapper()
       .className(
-        'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-4 p-4 rounded #{darkMode ? bg-gray-800 shadow-lg text-white : bg-white shadow-md}',
+        'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-4 p-4 rounded #{darkMode ? "bg-gray-800 shadow-lg text-white" : "bg-white shadow-md"}',
       )
       .style({
         background: 'linear-gradient(135deg, #ff7e5f, #feb47b)',
@@ -320,7 +320,7 @@ export const DEFAULT_DASHBOARD_COMMISAR = CommissarBuilder.create()
     LayoutComponentDetailBuilder.create()
       .wrapper()
       .className(
-        'w-full bg-white shadow mb-4 p-4 rounded #{darkMode ? bg-gray-800 shadow-lg text-white : bg-white shadow-md}',
+        'w-full bg-white shadow mb-4 p-4 rounded #{darkMode ? "bg-gray-800 shadow-lg text-white" : "bg-white shadow-md"}',
       )
       .addChild(formComponent)
       .build(),
@@ -330,7 +330,7 @@ export const DEFAULT_DASHBOARD_COMMISAR = CommissarBuilder.create()
     LayoutComponentDetailBuilder.create()
       .wrapper()
       .className(
-        'w-full bg-white mb-4 p-4 rounded #{darkMode ? bg-gray-800 shadow-lg text-white : bg-white shadow-md}',
+        'w-full mb-4 p-4 rounded #{darkMode ? "bg-gray-800 shadow-lg text-white" : "bg-white shadow-md"}',
       )
       .addChild(tableComponent)
       .build(),
@@ -340,13 +340,13 @@ export const DEFAULT_DASHBOARD_COMMISAR = CommissarBuilder.create()
     LayoutComponentDetailBuilder.create()
       .wrapper()
       .className(
-        'grid grid-cols-1 gap-6 mb-4 p-4 rounded #{darkMode ? bg-gray-800 shadow-lg text-white : bg-white shadow-md}',
+        'grid grid-cols-1 gap-6 mb-4 p-4 rounded #{darkMode ? "bg-gray-800 shadow-lg text-white" : "bg-white shadow-md"}',
       )
       .addChild(
         LayoutComponentDetailBuilder.create()
           .wrapper()
           .className(
-            'mb-4 p-4 rounded #{darkMode ? bg-gray-800 shadow-lg text-white : bg-white shadow-md}',
+            'mb-4 p-4 rounded #{darkMode ? "bg-gray-800 shadow-lg text-white" : "bg-white shadow-md"}',
           )
           .addChild(detailComponent)
           .addChild(popupComponent)
@@ -358,7 +358,7 @@ export const DEFAULT_DASHBOARD_COMMISAR = CommissarBuilder.create()
     LayoutComponentDetailBuilder.create()
       .wrapper()
       .className(
-        'flex gap-4 mb-4 p-4 rounded #{darkMode ? bg-gray-800 shadow-lg text-white : bg-white shadow-md}',
+        'flex gap-4 mb-4 p-4 rounded #{darkMode ? "bg-gray-800 shadow-lg text-white" : "bg-white shadow-md"}',
       ) // row layout with gap
       .addChildren([
         // Left (Progress / Chart) - 80%

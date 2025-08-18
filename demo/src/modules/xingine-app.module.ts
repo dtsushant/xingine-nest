@@ -1,8 +1,9 @@
-import {Module} from "@nestjs/common";
+import {Module, NestModule,
+    OnModuleInit,MiddlewareConsumer} from "@nestjs/common";
 
 import {AppController} from "@controllers/app.controller";
 import {AppService} from "@services/app.service";
-import {XingineModule} from "xingine-nest";
+import {XingineModule} from "../../../src";
 
 @Module({
     imports:[
@@ -12,4 +13,16 @@ import {XingineModule} from "xingine-nest";
     providers: [AppService],
     exports: [AppService],
 })
-export class XingineAppModule {}
+export class XingineAppModule implements NestModule, OnModuleInit{
+    constructor(
+        private readonly appService: AppService
+    ) {}
+
+    async onModuleInit(): Promise<void> {
+        await this.appService.registerLayout();
+    }
+
+    configure(consumer: MiddlewareConsumer) {
+
+    }
+}

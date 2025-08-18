@@ -6,9 +6,11 @@ import { User } from '../entities/user.entity';
 import {Commissar,Provisioneer} from "xingine-nest";
 import {userAnalytics} from "@/components/content/user/user.commissar";
 import {userProvisioneer} from "@/components/content/user/user.provisioneer";
+import {LayoutComponentDetail} from "xingine";
+import {USER_DETAIL_COMPONENT} from "@/components/layouts/body-only/user-add-form";
 
 @ApiTags('users')
-@Controller('api/users')
+@Controller('users')
 @Provisioneer(userProvisioneer)
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -27,8 +29,31 @@ export class UserController {
         return { msg: 'success' };
     }
 
+    @Get('user-detail/:userId')
+    async userDetail(): Promise<LayoutComponentDetail> {
+        return USER_DETAIL_COMPONENT;
+    }
+
+    @Get('fetch/:userId')
+    async fetch(@Param() params: Record<string, string>): Promise<Record<string,unknown>> {
+      console.log("the userid here is ", params.userId);
+        const mockUserResponse = { firstName: 'Value from setter', accountType: 'business', hasCompanyInfo: true, company: { name: 'ABC COMPANY' } };
+
+        return mockUserResponse;
+    }
+
+    @Post('save')
+    async save(@Body() params: Record<string, string>): Promise<Record<string,unknown>> {
+
+        console.log("the params here are ", params);
+        if(!params.company) {
+            return {success:false, message: 'Company information is required', userId:0};
+        }
+        return {success:true, message: 'User saved successfully', userId:1};
+    }
+
   @Get()
-  @ApiOperation({ summary: 'Get all users' })
+  @ApiOperation({ summary: 'Get all userss' })
   @ApiResponse({ status: HttpStatus.OK, description: 'List of all users' })
   async findAll(): Promise<User[]> {
     return this.userService.findAll();

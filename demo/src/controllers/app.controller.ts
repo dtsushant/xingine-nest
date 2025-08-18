@@ -14,7 +14,7 @@ export class AppController{
 
     @Get('commissars')
     async dispatchAllCommissars(): Promise<LayoutRenderer[]> {
-        console.log("accessing the commissars kkk")
+        console.log("accessing the commissars decide")
         return await this.appService.getAllLayoutRenderer();
     }
 }
